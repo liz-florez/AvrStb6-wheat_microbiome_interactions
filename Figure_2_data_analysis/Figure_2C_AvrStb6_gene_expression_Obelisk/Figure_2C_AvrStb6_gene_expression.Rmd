@@ -1,0 +1,63 @@
+---
+title: "Figure_2C_AvrStb6_gene_expression"
+output: html_document
+---
+
+```{r}
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+```
+
+AvrStb6 gene expression
+
+Violin + Box plot (TPM) 
+
+```{r}
+
+df <- read.csv("AvrStb6_TPM_Obelisk.csv")
+
+selected_dpi <- c("4", "8", "12","16","20")
+
+df <- df %>% 
+  filter(dpi %in% selected_dpi)
+
+df <- df %>%
+  mutate(dpi = factor(dpi, levels = c("4", "8", "12","16","20")))
+
+df$dpi <- factor(df$dpi, levels = c(4,8,12,16,20))
+
+ggplot(df, aes(x = dpi, y = tpm, fill = treatment)) +
+  geom_violin(trim = FALSE, alpha = 0.5, color = NA) +
+  geom_boxplot(width = 0.15, outlier.shape = NA, position = position_dodge(0.9)) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.15), size = 1, alpha = 0.9) +
+  scale_fill_manual(
+    values = c("in planta" = "#1b9e77"),
+    name = "Treatment"  # <-- updated legend title
+  ) +
+  theme_bw(base_size = 14) +
+  labs(
+    title = "AvrStb6 gene expression (TPM)",
+    x = "Days post-inoculation (dpi)",
+    y = "TPM"
+  ) +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "top",
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    plot.title = element_text(size = 12)
+  )
+
+
+# Save last plot as a high-resolution PNG
+ggsave("Obelisk_AvrStb6_gene_expression.png", width = 4, height = 4, dpi = 600)
+
+
+```
+
+

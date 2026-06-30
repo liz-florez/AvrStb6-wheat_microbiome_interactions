@@ -1,0 +1,143 @@
+---
+title: "Confrontation_assays_Figure_4"
+output: html_document
+---
+
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(rstatix)
+library(dplyr)
+library(multcompView)
+
+
+```
+
+Figure 4. Differential inhibition of Zymoseptoria tritici strains by wheat-associated bacteria.
+
+```{r}
+
+# 1. Load data
+df <- read_csv("wheat_bacteria_vs_Zt_IPO323.csv")  # Replace with your actual file path
+
+df <- df %>%
+  mutate(treatment = factor(treatment, levels = c("IPO323", "AvrStb6")))
+
+
+# 2.Perform ANOVA separately for each bacterial genus
+anova_results <- df %>%
+  group_by(bacteria_genus) %>%
+  anova_test(inhibition_length ~ treatment)
+
+# Print ANOVA results
+print(anova_results)
+
+# Perform Tukey's post hoc test for each bacterial genus
+tukey_results <- df %>%
+  group_by(bacteria_genus) %>%
+  tukey_hsd(inhibition_length ~ treatment)
+
+# Print Tukey test results
+print(tukey_results)
+
+
+# 3. Reorganise and rename bacterial and fungal strains
+
+df$bacteria_genus <- factor(
+  df$bacteria_genus,
+  levels = c(
+    "Pseudomonas",
+    "Pantoea",
+    "Enterobacter",
+    "Curtobacterium",
+    "Flavobacterium",
+    "Rahnella"
+  ),
+  labels = c(
+    "Pseudomonas",
+    "Pantoea",
+    "Enterobacter",
+    "Curtobacterium",
+    "Flavobacterium",
+    "Rahnella"
+  )
+)
+
+df$treatment <- factor(
+  df$treatment,
+  levels = c(
+    "IPO323",
+    "AvrStb6"
+  ),
+  labels = c(
+    "IPO323",
+    "IPO323 ∆AvrStb6"
+  )
+)
+
+
+# 4. Create box plot
+
+ggboxplot(df, x = "bacteria_genus", y = "inhibition_length",
+          fill = "treatment",
+          color = "treatment",
+          add = "jitter",
+          add.params = list(size = 2, alpha = 0.9),
+          width = 0.7,
+          alpha = 0.4,                    # transparency for boxes
+          outlier.shape = NA) +
+  labs(title = "Inhibition by bacteria genus",
+       x = "Bacteria genus",
+       y = "Inhibition length (mm)",
+       color = "Zymoseptoria tritici isolate",
+       fill = "Zymoseptoria tritici isolate") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    axis.text.x = element_text(face = "italic")
+  )
+
+
+### Save the plot
+ggsave("wheat_bacteria_vs_Zt_IPO323.png", width = 10, height = 6, dpi = 800)
+
+
+```
+
+Supplementary Figure 4. Strain-level variation in bacterial inhibition of Zymoseptoria tritici. 
+
+```{r}
+
+
+# Plot per strain (lab_ID) within each genus
+
+ggboxplot(df, x = "treatment", y = "inhibition_length",
+          fill = "treatment",
+          color = "treatment",
+          add = "jitter",
+          add.params = list(size = 2, alpha = 0.9),
+          width = 0.6,
+          alpha = 0.4,
+          outlier.shape = NA) +
+  facet_wrap(~ bacteria_genus + strain_ID, ncol = 6)+
+  labs(title = "Inhibition by individual bacterial strains",
+       x = NULL,
+       y = "Inhibition length (mm)",
+       color = "Zymoseptoria tritici isolate",
+       fill = "Zymoseptoria tritici isolate") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    strip.text = element_text(size = 8, face = "italic"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+### Save the plot
+ggsave("Sup_Fig_4_wheat_bacteria_strains_vs_Zt_IPO323.png", width = 10, height = 6, dpi = 800)
+
+
+```

@@ -1,0 +1,156 @@
+---
+title: "Bactericidal_activity_assay"
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(RColorBrewer)
+
+```
+
+Plate 1 - subset data - AvrStb6
+
+```{r}
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+
+des <- read.csv("plate_layout.csv", header = TRUE)
+data <- read.csv("plate_output.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 26)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+
+#---------------------------------------------------------
+# 4. Select bacteria and treatments
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Pseudomonas sp.", "Rahnella sp.","Enterobacter sp.","Flavobacterium sp.","Curtobacterium sp.","Pantoea sp."
+)
+
+selected_treatments <- c("mock", "Melittin", "AvrStb6_1E4", "AvrStb6_1A5")
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(treatment %in% selected_treatments)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "OD", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "treatment")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, treatment) %>%
+  summarise(
+    mean = mean(OD, na.rm = TRUE),
+    sd   = sd(OD, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacteria and treatments
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "Pseudomonas sp.", 
+    "Rahnella sp.",
+    "Enterobacter sp.",
+    "Flavobacterium sp.",
+    "Curtobacterium sp.",
+    "Pantoea sp."
+  ),
+  labels = c(
+    "Pseudomonas sp.", 
+    "Rahnella sp.",
+    "Enterobacter sp.",
+    "Flavobacterium sp.",
+    "Curtobacterium sp.",
+    "Pantoea sp."
+  )
+)
+Imean$treatment <- factor(
+  Imean$treatment,
+  levels = c(
+    "mock",
+    "Melittin",
+    "AvrStb6_1E4",
+    "AvrStb6_1A5"
+  ),
+  labels = c(
+    "mock",
+    "Melittin",
+    "AvrStb6.1E4",
+    "AvrStb6.1A5"
+  )
+)
+
+#---------------------------------------------------------
+# 8. Plot using Time_hours (clean readable x-axis)
+#---------------------------------------------------------
+
+# Create custom labels for facet titles
+bacteria_labs <- c(
+  "Pseudomonas sp."   = "italic('Pseudomonas')~'sp.'",
+  "Rahnella sp."      = "italic('Rahnella')~'sp.'",
+  "Enterobacter sp."  = "italic('Enterobacter')~'sp.'",
+  "Flavobacterium sp."= "italic('Flavobacterium')~'sp.'",
+  "Curtobacterium sp."= "italic('Curtobacterium')~'sp.'",
+  "Pantoea sp."       = "italic('Pantoea')~'sp.'"
+)
+
+ggplot(Imean, aes(x = Time_hours, y = mean, group = treatment, color = treatment)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, size = 0.2) +
+  facet_wrap(~ bacteria, labeller = as_labeller(bacteria_labs, label_parsed)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  scale_color_brewer(palette = "Set2", name = "Treatment") +
+  coord_cartesian(ylim = c(0, 1)) +
+  labs(y = "OD600") +
+  theme_bw() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("All_Antimicrobial_assay_24h.png", width = 8, height = 4, dpi = 1200)
+
+
+```

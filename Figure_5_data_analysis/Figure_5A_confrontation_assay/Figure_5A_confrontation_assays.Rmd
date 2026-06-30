@@ -1,0 +1,145 @@
+---
+title: "Confrontation_assays_Figure_5B"
+output: html_document
+---
+
+Figure 5. 
+
+AvrStb6 confers protection against bacterial antagonism across genetic backgrounds and modulates fungal–bacterial dynamics. 
+
+Figure 5A. Fungal inhibition caused by Pseudomonas and Pantoea co-cultivated with five Z. tritici strains: IPO323, IPO323 ∆AvrStb6, 3D7-mCherry, 3D7-mCherry ∆AvrStb6, and 3D7-mCherry AvrStb61E4. 
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(rstatix)
+library(dplyr)
+library(multcompView)
+library(tidyverse)
+
+```
+
+
+```{r}
+
+# 1. Load and prepare data
+
+df <- read_csv("Pseu_and_Pant_vs_Zt_strains.csv")
+
+treatment_labels <- c(
+  "IPO323" = "IPO323",
+  "IPO323_AvrStb6" = "IPO323 ΔAvrStb6",
+  "3D7" = "3D7-mCherry",
+  "3D7_AvrStb6" = "3D7-mCherry ΔAvrStb6",
+  "3D7_AvrStb6_1E4" = "3D7-mCherry + AvrStb6.1E4"
+)
+
+df <- df %>%
+  mutate(treatment = factor(treatment, levels = names(treatment_labels)))
+
+df <- df %>%
+  mutate(
+    bacteria_genus = factor(bacteria_genus,
+                            levels = c("Pseudomonas", "Pantoea"))
+  )
+
+letters_df <- df %>%
+  mutate(
+    bacteria_genus = factor(bacteria_genus,
+                            levels = c("Pseudomonas", "Pantoea"))
+  )
+
+
+# 2. Statistics: ANOVA and Tukey per bacterial genus
+
+anova_results <- df %>%
+  group_by(bacteria_genus) %>%
+  anova_test(inhibition_length ~ treatment)
+
+tukey_results <- df %>%
+  group_by(bacteria_genus) %>%
+  tukey_hsd(inhibition_length ~ treatment) %>%
+  ungroup()
+
+
+# 3. Compact letter display
+
+letters_df <- tukey_results %>%
+  group_by(bacteria_genus) %>%
+  group_modify(~ {
+    comp <- setNames(.x$p.adj, paste(.x$group1, .x$group2, sep = "-"))
+    let <- multcompLetters(comp)$Letters
+    
+    tibble(
+      treatment = names(let),
+      letters = unname(let)
+    )
+  }) %>%
+  ungroup() %>%
+  mutate(treatment = factor(treatment, levels = names(treatment_labels)))
+
+letter_positions <- df %>%
+  group_by(bacteria_genus) %>%
+  mutate(offset = 0.06 * diff(range(inhibition_length, na.rm = TRUE))) %>%
+  group_by(bacteria_genus, treatment) %>%
+  summarise(
+    y = max(inhibition_length, na.rm = TRUE) + first(offset),
+    .groups = "drop"
+  )
+
+letters_df <- letters_df %>%
+  left_join(letter_positions, by = c("bacteria_genus", "treatment"))
+
+
+# 4. Box Plot with variable defined
+
+p <- ggboxplot(df,
+               x = "treatment",
+               y = "inhibition_length",
+               fill = "treatment",
+               color = "treatment",
+               add = "jitter",
+               facet.by = "bacteria_genus",
+               width = 0.7,
+               alpha = 0.4,
+               outlier.shape = NA) +
+  
+  geom_text(data = letters_df,
+            aes(x = treatment, y = y, label = letters),
+            inherit.aes = FALSE,
+            size = 5,
+            vjust = 0,
+            family = "Avenir Next Medium") +
+  
+  scale_x_discrete(labels = treatment_labels) +
+  
+  scale_y_continuous(
+    limits = c(0, NA),
+    expand = expansion(mult = c(0.02, 0.15))
+  ) +
+  
+  labs(x = "Zymoseptoria tritici isolate",
+       y = "Inhibition length (mm)") +
+  
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    strip.text = element_text(size = 11),
+    strip.background = element_rect(fill = "white", color = "black"),
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+#---------------------------------------------------------
+# 5. Save plot
+#---------------------------------------------------------
+
+ggsave("Pseu_and_Pant_vs_Zt_strains.png", p, width = 8, height = 6, dpi = 600)
+```
+
+

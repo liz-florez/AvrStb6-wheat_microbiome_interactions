@@ -1,0 +1,301 @@
+---
+title: "Figure_2A_and_2B_disease_timecourse"
+output: html_document
+---
+
+```{r}
+
+library(ggpubr)
+library(dplyr)
+library(readr)
+
+# Read the data (replace with your actual file path)
+df <- read.csv("disease_timecourse.csv", header = TRUE)
+
+
+# Summarise
+df_summary <- df %>%
+  group_by(treatment, day) %>%
+  summarise(
+    mean_pycnidia = mean(pycnidia_incidence),
+    se_pycnidia = sd(pycnidia_incidence)/sqrt(n()),
+    mean_necrosis = mean(necrosis_incidence),
+    se_necrosis = sd(necrosis_incidence)/sqrt(n()),
+    .groups = "drop"
+  )
+
+
+#Reorganise and relabel variables
+df$treatment <- factor(
+  df$treatment,
+  levels = c(
+    "mock",
+    "IPO323",
+    "∆AvrStb6"
+  ),
+  labels = c(
+    "mock",
+    "IPO323",
+    "IPO323 ∆AvrStb6"
+  )
+)
+
+#Subsetting specifc time points
+df <- df %>%
+  filter(day %in% c(3, 6, 9, 12, 15, 18, 21))
+
+
+```
+
+Pycnidia incidence
+
+```{r}
+
+
+# Pycnidia ggboxplot plot
+ggboxplot(df, x = "day", y = "pycnidia_incidence",
+          fill = "treatment",
+          color = "treatment",
+          add = "jitter",
+          add.params = list(size = 2, alpha = 0.9),
+          width = 0.7,
+          alpha = 0.4,                    # transparency for boxes
+          outlier.shape = NA) +
+  coord_cartesian(ylim = c(0, 105)) +
+  labs(x = "Time (dpi)",
+       y = "Pycnidia incidence (%)",
+       color = "Treatment",
+       fill = "Treatment") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Avenir Next Medium")
+  )
+
+
+
+# Save last plot as a high-resolution PNG
+ggsave("Figure_2A_Obelisk_pycnidia_incidence.png", width = 6, height = 4, dpi = 600)
+
+
+```
+
+Necrosis incidence
+
+```{r}
+
+# Necrosis ggboxplot plot
+ggboxplot(df, x = "day", y = "necrosis_incidence",
+          fill = "treatment",
+          color = "treatment",
+          add = "jitter",
+          add.params = list(size = 2, alpha = 0.9),
+          width = 0.7,
+          alpha = 0.4,                    # transparency for boxes
+          outlier.shape = NA) +
+  coord_cartesian(ylim = c(0, 105)) +
+  labs(x = "Time (dpi)",
+       y = "Necrosis incidence (%)",
+       color = "Treatment",
+       fill = "Treatment") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Avenir Next Medium")
+  )
+
+
+# Save last plot as a high-resolution PNG
+ggsave("Figure_2B_Obelisk_necrosis_incidence.png", width = 6, height = 4, dpi = 600)
+
+
+```
+
+Statistical analysis of data:
+
+PYCNIDIA INCIDENCE:
+
+ANOVA for pycnidia incidence
+
+```{r}
+
+library(dplyr)
+library(rstatix)
+library(openxlsx)
+
+df_anova <- df %>%
+  group_by(day) %>%
+  filter(var(pycnidia_incidence, na.rm = TRUE) > 0) %>%
+  ungroup()
+
+anova_results <- df_anova %>%
+  group_by(day) %>%
+  anova_test(pycnidia_incidence ~ treatment)
+
+anova_results
+
+write.xlsx(
+  anova_results,
+  "anova_results_pycnidia.xlsx",
+  overwrite = TRUE
+)
+
+```
+
+Tukey for pycnidia incidence
+
+```{r}
+
+tukey_results <- df_anova %>%
+  group_by(day) %>%
+  tukey_hsd(pycnidia_incidence ~ treatment)
+
+tukey_results
+
+write.xlsx(
+  tukey_results,
+  "tukey_results_pycnidia.xlsx",
+  overwrite = TRUE
+)
+
+```
+
+Reduction of pycnidia incidence in the mutant ΔAvrStb6 compared to IPO323:=, using the following formula:
+
+Reduction(%) = (Mean IPO323−Mean ΔAvrStb6)/Mean IPO323*100
+
+```{r}
+
+mean_incidence <- df %>%
+  group_by(day, treatment) %>%
+  summarise(
+    mean_pycnidia = mean(pycnidia_incidence),
+    .groups = "drop"
+  )
+
+reduction_table <- mean_incidence %>%
+  filter(treatment %in% c("IPO323", "IPO323 ∆AvrStb6")) %>%
+  pivot_wider(
+    names_from = treatment,
+    values_from = mean_pycnidia
+  ) %>%
+  mutate(
+    difference = IPO323 - `IPO323 ∆AvrStb6`,
+    reduction_percent = 100 * difference / IPO323
+  )
+
+#Restricting to significant time points only
+sig_days <- tukey_results %>%
+  filter(
+    group1 == "IPO323" &
+    group2 == "IPO323 ∆AvrStb6" &
+    p.adj < 0.05
+  ) %>%
+  pull(day)
+
+reduction_table_sig <- reduction_table %>%
+  filter(day %in% sig_days)
+
+reduction_table_sig
+
+write.xlsx(
+  reduction_table_sig,
+  "pycnidia_incidence_reduction.xlsx",
+  overwrite = TRUE
+)
+
+
+
+```
+
+NECROSIS INCIDENCE:
+
+ANOVA for necrosis incidence
+
+```{r}
+
+library(dplyr)
+library(rstatix)
+
+df_anova <- df %>%
+  group_by(day) %>%
+  filter(var(necrosis_incidence, na.rm = TRUE) > 0) %>%
+  ungroup()
+
+anova_results <- df_anova %>%
+  group_by(day) %>%
+  anova_test(necrosis_incidence ~ treatment)
+
+anova_results
+
+write.xlsx(
+  anova_results,
+  "anova_results_necrosis.xlsx",
+  overwrite = TRUE
+)
+
+```
+
+Tukey for necrosis incidence
+
+```{r}
+
+tukey_results <- df_anova %>%
+  group_by(day) %>%
+  tukey_hsd(necrosis_incidence ~ treatment)
+
+tukey_results
+
+write.xlsx(
+  tukey_results,
+  "tukey_results_necrosis.xlsx",
+  overwrite = TRUE
+)
+
+```
+
+Reduction of necrosis incidence in the mutant ΔAvrStb6 compared to IPO323:=, using the following formula:
+
+Reduction(%) = (Mean IPO323−Mean ΔAvrStb6)/Mean IPO323*100
+
+```{r}
+
+mean_incidence <- df %>%
+  group_by(day, treatment) %>%
+  summarise(
+    mean_necrosis = mean(necrosis_incidence),
+    .groups = "drop"
+  )
+
+reduction_table <- mean_incidence %>%
+  filter(treatment %in% c("IPO323", "IPO323 ∆AvrStb6")) %>%
+  pivot_wider(
+    names_from = treatment,
+    values_from = mean_necrosis
+  ) %>%
+  mutate(
+    difference = IPO323 - `IPO323 ∆AvrStb6`,
+    reduction_percent = 100 * difference / IPO323
+  )
+
+#Restricting to significant time points only
+sig_days <- tukey_results %>%
+  filter(
+    group1 == "IPO323" &
+    group2 == "IPO323 ∆AvrStb6" &
+    p.adj < 0.05
+  ) %>%
+  pull(day)
+
+reduction_table_sig <- reduction_table %>%
+  filter(day %in% sig_days)
+
+reduction_table_sig
+
+write.xlsx(
+  reduction_table_sig,
+  "necrosis_incidence_reduction.xlsx",
+  overwrite = TRUE
+)
+
+```
+
+

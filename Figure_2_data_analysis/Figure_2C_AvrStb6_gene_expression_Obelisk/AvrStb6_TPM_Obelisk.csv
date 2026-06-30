@@ -1,0 +1,15 @@
+﻿RNA_sample,treatment,dpi,tpm,replicate
+Zt09_in_vitro_01,in vitro,0,59.27281397,1
+Zt09_in_vitro_02,in vitro,0,47.47932137,2
+Zt09_Ta_A_01,in planta,4,319.6765999,1
+Zt09_Ta_A_02,in planta,4,198.3378268,2
+Zt09_Ta_B_01,in planta,8,464.2856266,1
+Zt09_Ta_B_02,in planta,8,635.5065554,2
+Zt09_Ta_C_01,in planta,11,532.7957799,1
+Zt09_Ta_C_02,in planta,11,478.9989592,2
+Zt09_Ta_D_01,in planta,12,246.3123452,1
+Zt09_Ta_D_02,in planta,12,184.2939274,2
+Zt09_Ta_E_01,in planta,16,22.2755096,1
+Zt09_Ta_E_02,in planta,16,30.2570918,2
+Zt09_Ta_F_01,in planta,20,22.2755096,1
+Zt09_Ta_F_02,in planta,20,30.2570918,2

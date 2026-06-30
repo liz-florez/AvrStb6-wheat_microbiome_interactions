@@ -1,0 +1,97 @@
+row,column,well,bacteria,treatment,concentration
+A,1,A1,Pseudomonas sp.,mock,0
+B,1,B1,Rahnella sp.,mock,0
+C,1,C1,Enterobacter sp.,mock,0
+D,1,D1,Flavobacterium sp.,mock,0
+E,1,E1,Curtobacterium sp.,mock,0
+F,1,F1,bac6 (AF0215),mock,0
+G,1,G1,Pantoea sp.,mock,0
+H,1,H1,bac8 (AF0359),mock,0
+A,2,A2,Pseudomonas sp.,Melittin,8
+B,2,B2,Rahnella sp.,Melittin,8
+C,2,C2,Enterobacter sp.,Melittin,8
+D,2,D2,Flavobacterium sp.,Melittin,8
+E,2,E2,Curtobacterium sp.,Melittin,8
+F,2,F2,bac6 (AF0215),Melittin,8
+G,2,G2,Pantoea sp.,Melittin,8
+H,2,H2,bac8 (AF0359),Melittin,8
+A,3,A3,Pseudomonas sp.,AvrStb6_1E4,8
+B,3,B3,Rahnella sp.,AvrStb6_1E4,8
+C,3,C3,Enterobacter sp.,AvrStb6_1E4,8
+D,3,D3,Flavobacterium sp.,AvrStb6_1E4,8
+E,3,E3,Curtobacterium sp.,AvrStb6_1E4,8
+F,3,F3,bac6 (AF0215),AvrStb6_1E4,8
+G,3,G3,Pantoea sp.,AvrStb6_1E4,8
+H,3,H3,bac8 (AF0359),AvrStb6_1E4,8
+A,4,A4,Pseudomonas sp.,AvrStb6_1A5,8
+B,4,B4,Rahnella sp.,AvrStb6_1A5,8
+C,4,C4,Enterobacter sp.,AvrStb6_1A5,8
+D,4,D4,Flavobacterium sp.,AvrStb6_1A5,8
+E,4,E4,Curtobacterium sp.,AvrStb6_1A5,8
+F,4,F4,bac6 (AF0215),AvrStb6_1A5,8
+G,4,G4,Pantoea sp.,AvrStb6_1A5,8
+H,4,H4,bac8 (AF0359),AvrStb6_1A5,8
+A,5,A5,Pseudomonas sp.,mock,0
+B,5,B5,Rahnella sp.,mock,0
+C,5,C5,Enterobacter sp.,mock,0
+D,5,D5,Flavobacterium sp.,mock,0
+E,5,E5,Curtobacterium sp.,mock,0
+F,5,F5,bac6 (AF0215),mock,0
+G,5,G5,Pantoea sp.,mock,0
+H,5,H5,bac8 (AF0359),mock,0
+A,6,A6,Pseudomonas sp.,Melittin,8
+B,6,B6,Rahnella sp.,Melittin,8
+C,6,C6,Enterobacter sp.,Melittin,8
+D,6,D6,Flavobacterium sp.,Melittin,8
+E,6,E6,Curtobacterium sp.,Melittin,8
+F,6,F6,bac6 (AF0215),Melittin,8
+G,6,G6,Pantoea sp.,Melittin,8
+H,6,H6,bac8 (AF0359),Melittin,8
+A,7,A7,Pseudomonas sp.,AvrStb6_1E4,8
+B,7,B7,Rahnella sp.,AvrStb6_1E4,8
+C,7,C7,Enterobacter sp.,AvrStb6_1E4,8
+D,7,D7,Flavobacterium sp.,AvrStb6_1E4,8
+E,7,E7,Curtobacterium sp.,AvrStb6_1E4,8
+F,7,F7,bac6 (AF0215),AvrStb6_1E4,8
+G,7,G7,Pantoea sp.,AvrStb6_1E4,8
+H,7,H7,bac8 (AF0359),AvrStb6_1E4,8
+A,8,A8,Pseudomonas sp.,AvrStb6_1A5,8
+B,8,B8,Rahnella sp.,AvrStb6_1A5,8
+C,8,C8,Enterobacter sp.,AvrStb6_1A5,8
+D,8,D8,Flavobacterium sp.,AvrStb6_1A5,8
+E,8,E8,Curtobacterium sp.,AvrStb6_1A5,8
+F,8,F8,bac6 (AF0215),AvrStb6_1A5,8
+G,8,G8,Pantoea sp.,AvrStb6_1A5,8
+H,8,H8,bac8 (AF0359),AvrStb6_1A5,8
+A,9,A9,no_bacteria,mock,0
+B,9,B9,no_bacteria,mock,0
+C,9,C9,no_bacteria,mock,0
+D,9,D9,no_bacteria,mock,0
+E,9,E9,no_bacteria,mock,0
+F,9,F9,no_bacteria,mock,0
+G,9,G9,no_bacteria,mock,0
+H,9,H9,no_bacteria,mock,0
+A,10,A10,no_bacteria,mock,0
+B,10,B10,no_bacteria,mock,0
+C,10,C10,no_bacteria,mock,0
+D,10,D10,no_bacteria,mock,0
+E,10,E10,no_bacteria,mock,0
+F,10,F10,no_bacteria,mock,0
+G,10,G10,no_bacteria,mock,0
+H,10,H10,no_bacteria,mock,0
+A,11,A11,no_bacteria,mock,0
+B,11,B11,no_bacteria,mock,0
+C,11,C11,no_bacteria,mock,0
+D,11,D11,no_bacteria,mock,0
+E,11,E11,no_bacteria,mock,0
+F,11,F11,no_bacteria,mock,0
+G,11,G11,no_bacteria,mock,0
+H,11,H11,no_bacteria,mock,0
+A,12,A12,no_bacteria,mock,0
+B,12,B12,no_bacteria,mock,0
+C,12,C12,no_bacteria,mock,0
+D,12,D12,no_bacteria,mock,0
+E,12,E12,no_bacteria,mock,0
+F,12,F12,no_bacteria,mock,0
+G,12,G12,no_bacteria,mock,0
+H,12,H12,no_bacteria,mock,0

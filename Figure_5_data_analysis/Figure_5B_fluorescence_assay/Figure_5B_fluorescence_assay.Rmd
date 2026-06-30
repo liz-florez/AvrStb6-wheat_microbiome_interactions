@@ -1,0 +1,1583 @@
+---
+title: "Fluorescence_assay_Figure_5B"
+output: html_document
+---
+
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(rstatix)
+library(dplyr)
+library(tidyr)
+library(multcompView)
+library(lubridate)
+library(ggpubr)
+library(ggsci)
+library(lme4) #For statistical analysis
+library(lmerTest) #For statistical analysis
+library(DescTools) #For statistical analysis
+
+```
+
+FA4_mCherry
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_plate_layout.csv", header = TRUE)
+data <- read.csv("FA_mCherry.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 2.1. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+
+#---------------------------------------------------------
+# 3. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "mChe", colnames(data)[!colnames(data) %in% c("Time","Time_hours")]) %>%
+  left_join(des[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 4. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(mChe, na.rm = TRUE),
+    sd   = sd(mChe, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 5. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "no_bacteria", 
+    "Escherichia_coli_Top10_wild-type",
+    "Escherichia_coli_Top10_dTomato_clone_1",
+    "Pseudomonas_brassicacearum_AF0029",
+    "Pseudomonas_brassicacearum_AF0102",
+    "Pseudomonas_brassicacearum_AF0191",
+    "Pseudomonas_brassicacearum_AF0029_dTomato",
+    "Pseudomonas_brassicacearum_AF0102_dTomato", 
+    "Pseudomonas_brassicacearum_AF0191_dTomato" 
+  ),
+  labels = c(
+    "Fungi only" , 
+    "E. coli Top10 wt",
+    "E. coli Top10 dTomato",
+    "P. brassicacearum CC1-AF0029 wt",
+    "P. brassicacearum CC1-AF0102 wt",
+    "P. brassicacearum CC1-AF0191 wt",
+    "P. brassicacearum CC1-AF0029 dTomato",
+    "P. brassicacearum CC1-AF0102 dTomato",
+    "P. brassicacearum CC1-AF0191 dTomato" 
+  )
+)
+
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+    "no_fungi",
+    "3D7",
+    "3D7_mCherry",
+    "3D7_mCherry_AvrStb6_KO",
+    "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+    "Bacteria only",
+    "Z. tritici 3D7 wt",
+    "3D7-mCherry", 
+    "3D7-mCherry ∆AvrStb6",
+    "3D7-mCherry + AvrStb6.1E4"
+  )
+)
+
+
+#---------------------------------------------------------
+# 6. Plot using Time_hours (clean readable x-axis)
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean, group = fungi, color = fungi)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(
+    aes(ymin = mean - sd, ymax = mean + sd),
+    width = 0.2,
+    size = 0.2
+  ) +
+  facet_wrap(~ bacteria, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  scale_color_brewer(palette = "Paired", name = "fungi") +
+  coord_cartesian(ylim = c(0, 2500)) +
+  labs(y = "mCherry fluorescence") +
+  theme_pubr() +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA),
+    legend.position = "bottom",
+    strip.text = element_text(size = 11, lineheight = 1.1),
+    strip.background = element_rect(fill = "white", color = "black"),
+    plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+    text = element_text(family = "Avenir Next Medium")
+  )
+
+
+#---------------------------------------------------------
+# 6. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA_mCherry_48h_by_bacteria.png", width = 9, height = 6, dpi = 600)
+
+```
+
+FA4 - mCherry - subsetting some bacteria and time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_plate_layout.csv", header = TRUE)
+data <- read.csv("FA_mCherry.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Pseudomonas_brassicacearum_AF0029_dTomato", "Escherichia_coli_Top10_wild-type","no_bacteria"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", "3D7_mCherry_AvrStb6_KO","3D7_mCherry_AvrStb6_GFP"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "mChe", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(mChe, na.rm = TRUE),
+    sd   = sd(mChe, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "no_bacteria",
+    "Escherichia_coli_Top10_wild-type",
+    "Pseudomonas_brassicacearum_AF0029_dTomato"
+  ),
+  labels = c(
+    "water control",
+    "Escherichia coli",
+    "Pseudomonas brassicacearum"
+  )
+)
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+    "3D7_mCherry",
+    "3D7_mCherry_AvrStb6_KO",
+    "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+    "3D7 mCherry",
+    "3D7 mCherry ∆AvrStb6",
+    "3D7 mCherry + AvrStb6.1E4"
+  )
+)
+
+#---------------------------------------------------------
+# 8. Plot using Time_hours (clean readable x-axis)
+#---------------------------------------------------------
+ggplot(Imean, aes(x = Time_hours, y = mean, group = bacteria, color = bacteria)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, size = 0.2) +
+  facet_wrap(~ fungi) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)  # adjust tick density
+  ) +
+  scale_color_brewer(palette = "Paired", name = "Treatment") +
+  coord_cartesian(ylim = c(0, 4000)) +
+  labs(y = "mCherry fluorescence") +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA_Figure_5B_mCherry_48h.png", width = 12, height = 4, dpi = 600)
+
+
+
+```
+
+FA4_dtomato
+
+```{r}
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_plate_layout.csv", header = TRUE)
+data <- read.csv("FA_dTomato.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+
+#---------------------------------------------------------
+# 2.1. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+
+#---------------------------------------------------------
+# 3. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "dTom", colnames(data)[!colnames(data) %in% c("Time","Time_hours")]) %>%
+  left_join(des[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 4. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(dTom, na.rm = TRUE),
+    sd   = sd(dTom, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 5. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "no_bacteria", 
+    "Escherichia_coli_Top10_wild-type",
+    "Escherichia_coli_Top10_dTomato_clone_1",
+    "Pseudomonas_brassicacearum_AF0029",
+    "Pseudomonas_brassicacearum_AF0102",
+    "Pseudomonas_brassicacearum_AF0191",
+    "Pseudomonas_brassicacearum_AF0029_dTomato",
+    "Pseudomonas_brassicacearum_AF0102_dTomato", 
+    "Pseudomonas_brassicacearum_AF0191_dTomato" 
+  ),
+  labels = c(
+    "Fungi only" , 
+    "E. coli Top10 wt",
+    "E. coli Top10 dTomato",
+    "P. brassicacearum CC1-AF0029 wt",
+    "P. brassicacearum CC1-AF0102 wt",
+    "P. brassicacearum CC1-AF0191 wt",
+    "P. brassicacearum CC1-AF0029 dTomato",
+    "P. brassicacearum CC1-AF0102 dTomato",
+    "P. brassicacearum CC1-AF0191 dTomato" 
+  )
+)
+
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+    "no_fungi",
+    "3D7",
+    "3D7_mCherry",
+    "3D7_mCherry_AvrStb6_KO",
+    "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+    "Bacteria only",
+    "Z. tritici 3D7 wt",
+    "3D7-mCherry", 
+    "3D7-mCherry ∆AvrStb6",
+    "3D7-mCherry+AvrStb6.1E4"
+  )
+)
+
+#---------------------------------------------------------
+# 6. Plot using Time_hours (clean readable x-axis)
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean, group = fungi, color = fungi)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(
+    aes(ymin = mean - sd, ymax = mean + sd),
+    width = 0.2,
+    size = 0.2
+  ) +
+  facet_wrap(~ bacteria, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  scale_color_brewer(palette = "Paired", name = "fungi") +
+  coord_cartesian(ylim = c(0, 20000)) +
+  labs(y = "dTomato fluorescence") +
+  theme_pubr() +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA),
+    legend.position = "bottom",
+    strip.text = element_text(size = 11, lineheight = 1.1),
+    strip.background = element_rect(fill = "white", color = "black"),
+    plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+    text = element_text(family = "Avenir Next Medium")
+  )
+
+#---------------------------------------------------------
+# 6. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA_dTomato_48h_by_bacteria.png", width = 9, height = 6, dpi = 600)
+
+
+```
+
+FA4 - dTomato - sub-setting some bacteria, fungi and setting time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA4_plate_layout.csv", header = TRUE)
+data <- read.csv("FA4_dTomato.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 100)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Pseudomonas_brassicacearum_AF0029_dTomato",
+  "Pseudomonas_brassicacearum_AF0102_dTomato",
+  "Pseudomonas_brassicacearum_AF0191_dTomato",
+  "Escherichia_coli_Top10_dTomato_clone_1",
+  "no_bacteria"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP",
+  "no_fungi"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "dTom", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(dTom, na.rm = TRUE),
+    sd   = sd(dTom, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+  "Pseudomonas_brassicacearum_AF0029_dTomato",
+  "Pseudomonas_brassicacearum_AF0102_dTomato",
+  "Pseudomonas_brassicacearum_AF0191_dTomato",
+  "Escherichia_coli_Top10_dTomato_clone_1",
+  "no_bacteria"
+  ),
+  labels = c(
+  "Pseudomonas brassicacearum AF0029-dTomato",
+  "Pseudomonas brassicacearum AF0102-dTomato",
+  "Pseudomonas brassicacearum AF0191-dTomato",
+  "Escherichia coli-dTomato",
+  "mock"
+  )
+)
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP",
+  "no_fungi"
+  ),
+  labels = c(
+  "3D7-mCherry", 
+  "3D7-mCherry ∆AvrStb6",
+  "3D7-mCherry + AvrStb6.1E4",
+  "no fungi"
+  )
+)
+
+
+#---------------------------------------------------------
+# 8.1 Plot using Time_hours (clean readable x-axis) - by FUNGI
+#---------------------------------------------------------
+ggplot(Imean, aes(x = Time_hours, y = mean, group = bacteria, color = bacteria)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, size = 0.2) +
+  facet_wrap(~ fungi) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)  # adjust tick density
+  ) +
+  scale_color_brewer(palette = "Paired", name = "Treatment") +
+  coord_cartesian(ylim = c(0, 21100)) +
+  labs(y = "dTomato fluorescence") +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9.1 Save high-resolution figure - by FUNGI
+#---------------------------------------------------------
+ggsave("FA4_dTomato_fun.png", width = 12, height = 4, dpi = 600)
+
+#---------------------------------------------------------
+# 8.2 Plot using Time_hours (clean readable x-axis) - by BACTERIA
+#---------------------------------------------------------
+ggplot(Imean, aes(x = Time_hours, y = mean, group = fungi, color = fungi)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, size = 0.2) +
+  facet_wrap(~ bacteria) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)  # adjust tick density
+  ) +
+  scale_color_brewer(palette = "Dark2", name = "Treatment") +
+  coord_cartesian(ylim = c(0, 30000)) +
+  labs(y = "dTomato fluorescence") +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA4_dTomato_bac.png", width = 12, height = 4, dpi = 600)
+
+
+
+```
+
+PSEUDOMONAS - MCHERRY
+
+SUBSETTING Pseudomonas + Zymo PER FIGURE MCHERRY
+
+FA4 - mCherry - subsetting some bacteria and time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_plate_layout.csv", header = TRUE)
+data <- read.csv("FA_mCherry.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Pseudomonas_brassicacearum_dTomato"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", "3D7_mCherry_AvrStb6_KO","3D7_mCherry_AvrStb6_GFP"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "mChe", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(mChe, na.rm = TRUE),
+    sd   = sd(mChe, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "Pseudomonas_brassicacearum_dTomato"
+  ),
+  labels = c(
+    "Pseudomonas brassicacearum - dTomato"
+  )
+)
+
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+    "3D7_mCherry",
+    "3D7_mCherry_AvrStb6_KO",
+    "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+  "Pseu.-dTomato + Zt 3D7-mCherry", 
+  "Pseu.-dTomato + Zt 3D7-mCherry ∆AvrStb6",
+  "Pseu.-dTomato + Zt 3D7-mCherry + AvrStb6.1E4"
+  )
+)
+
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8. Statistical analysis - Area under the curve with DescTools
+#--------------------------------------------------------- 
+
+auc_data <- It %>%
+  group_by(Well, fungi) %>%
+  summarise(
+    AUC = AUC(
+      x = Time_hours,
+      y = mChe,
+      method = "trapezoid"
+    )
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+auc_anova <- aov(AUC ~ fungi, data = auc_data)
+anova_summary <- as.data.frame(summary(auc_anova)[[1]])
+
+auc_tukey <- TukeyHSD(auc_anova)
+tukey_results <- as.data.frame(auc_tukey$fungi)
+#---------------------------------------------------------
+ggplot(auc_data, aes(x = fungi, y = AUC, fill = fungi)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +
+  labs(
+    x = "",
+    y = ifelse(
+      normalise_auc,
+      "Normalised area under fluorescence curve",
+      "Area under fluorescence curve"
+    )
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+#---------------------------------------------------------
+ggsave("AUC_boxplot.png", width = 6, height = 6, dpi = 600)
+#---------------------------------------------------------
+#AUC- area under the curve value obtain per well
+write.csv(auc_data,"AUC_values_per_well.csv",row.names = FALSE)
+
+#ANOVA only tells you if there statistical differences overall within the treatments
+write.csv(anova_summary,"AUC_ANOVA_summary.csv",row.names = TRUE)
+
+#Tukey posthoc will tell you about statistical differences between one-on-one treatment comparisons
+write.csv(tukey_results,"AUC_Tukey_posthoc.csv",row.names = TRUE)
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8 Plot - Facet_wrap, one curve per plot
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              fill = "#e5989b", alpha = 0.35) +
+  geom_line(color = "#b23a48", linewidth = 0.8) +
+  facet_wrap(~ fungi, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 3000)) +
+  labs(y = "mCherry fluorescence") +
+  theme_classic() +
+  theme(
+      strip.text = element_text(size = 11, lineheight = 1.1),
+      strip.background = element_rect(fill = "white", color = "black"),
+      plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+      text = element_text(family = "Avenir Next Medium"),
+      panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA_mCherry_48h_Pseu_vs_Zymo.png", width = 9, height = 3, dpi = 600)
+
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8.1 Plot - Remove facet_wrap, all curves in one plot
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean,
+                       colour = fungi, fill = fungi, group = fungi)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              alpha = 0.20, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(200, 2200)) +
+  labs(
+    y = "mCherry fluorescence",
+    colour = "Treatment",
+    fill = "Treatment"
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    legend.position = "none",
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA4_mCherry_48h_Pseu_vs_Zymo_all.png", width = 4, height = 4, dpi = 600)
+
+
+
+```
+
+PSEUDOMONAS - DTOMATO
+
+
+SUBSETTING ONE TREATMENT PER FIGURE DTOMATO
+
+FA4 - dTomato - subsetting some bacteria, fungi and setting time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_Liz_plate_layout.csv", header = TRUE)
+data <- read.csv("FA4_dTomato.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Pseudomonas_brassicacearum_dTomato"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "dTom", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(dTom, na.rm = TRUE),
+    sd   = sd(dTom, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+  "Pseudomonas_brassicacearum_dTomato"
+  ),
+  labels = c(
+  "Pseudomonas brassicacearum - dTomato"
+  )
+)
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+  "Pseudomonas-dTomato + 3D7-mCherry", 
+  "Pseudomonas-dTomato + 3D7-mCherry ∆AvrStb6",
+  "Pseudomonas-dTomato + 3D7-mCherry + AvrStb6.1E4"
+  )
+)
+
+#---------------------------------------------------------
+# 8. Statistical analysis - Area under the curve with DescTools
+#--------------------------------------------------------- 
+
+auc_data <- It %>%
+  group_by(Well, fungi) %>%
+  summarise(
+    AUC = AUC(
+      x = Time_hours,
+      y = dTom,
+      method = "trapezoid"
+    )
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+auc_anova <- aov(AUC ~ fungi, data = auc_data)
+anova_summary <- as.data.frame(summary(auc_anova)[[1]])
+
+auc_tukey <- TukeyHSD(auc_anova)
+tukey_results <- as.data.frame(auc_tukey$fungi)
+#---------------------------------------------------------
+ggplot(auc_data, aes(x = fungi, y = AUC, fill = fungi)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +
+  labs(
+    x = "",
+    y = ifelse(
+      normalise_auc,
+      "Normalised area under fluorescence curve",
+      "Area under fluorescence curve"
+    )
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+#---------------------------------------------------------
+ggsave("AUC_boxplot.png", width = 6, height = 6, dpi = 600)
+#---------------------------------------------------------
+#AUC- area under the curve value obtain per well
+write.csv(auc_data,"AUC_values_per_well.csv",row.names = FALSE)
+
+#ANOVA only tells you if there statistical differences overall within the treatments
+write.csv(anova_summary,"AUC_ANOVA_summary.csv",row.names = TRUE)
+
+#Tukey posthoc will tell you about statistical differences between one-on-one treatment comparisons
+write.csv(tukey_results,"AUC_Tukey_posthoc.csv",row.names = TRUE)
+
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8 Plot using Time_hours (clean readable x-axis) - for individual lines 
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              fill = "#f4a261", alpha = 0.35) +
+  geom_line(color = "#d94801", linewidth = 0.8) +
+  facet_wrap(~ fungi, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 21100)) +
+  labs(y = "dTomato fluorescence") +
+  theme_classic() +
+  theme(
+      strip.text = element_text(size = 11, lineheight = 1.1),
+      strip.background = element_rect(fill = "white", color = "black"),
+      plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+      text = element_text(family = "Avenir Next Medium"),
+      panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9 Save high-resolution figure - by FUNGI
+#---------------------------------------------------------
+ggsave("FA4_dTomato_48h_Pseu_vs_Zymo.png", width = 9, height = 3, dpi = 600)
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8.1 Plot - Remove facet_wrap, all curves in one plot
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean,
+                       colour = fungi, fill = fungi, group = fungi)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              alpha = 0.20, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 19000)) +
+  labs(
+    y = "dTomato fluorescence",
+    colour = "Treatment",
+    fill = "Treatment"
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    legend.position = "none",
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9 Save high-resolution figure - by FUNGI
+#---------------------------------------------------------
+ggsave("FA4_dTomato_48h_Pseu_vs_Zymo_all.png", width = 4, height = 4, dpi = 600)
+
+
+```
+
+ESCHERICHIA COLI - MCHERRY
+
+SUBSETTING Escherichia + Zymo PER FIGURE MCHERRY
+
+FA3 - mCherry - subsetting some bacteria and time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_Liz_plate_layout.csv", header = TRUE)
+data <- read.csv("FA4_mCherry_tidy.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Escherichia_coli_dTomato"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", "3D7_mCherry_AvrStb6_KO","3D7_mCherry_AvrStb6_GFP"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "mChe", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(mChe, na.rm = TRUE),
+    sd   = sd(mChe, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+    "Escherichia_coli_dTomato"
+  ),
+  labels = c(
+    "Escherichia coli - dTomato"
+  )
+)
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+    "3D7_mCherry",
+    "3D7_mCherry_AvrStb6_KO",
+    "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+  "E. coli-dTomato + Zt 3D7-mCherry", 
+  "E. coli-dTomato + Zt 3D7-mCherry ∆AvrStb6",
+  "E. coli-dTomato + Zt 3D7-mCherry + AvrStb6.1E4"
+  )
+)
+
+#---------------------------------------------------------
+# 8. Statistical analysis - Area under the curve with DescTools
+#--------------------------------------------------------- 
+
+auc_data <- It %>%
+  group_by(Well, fungi) %>%
+  summarise(
+    AUC = AUC(
+      x = Time_hours,
+      y = mChe,
+      method = "trapezoid"
+    )
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+auc_anova <- aov(AUC ~ fungi, data = auc_data)
+anova_summary <- as.data.frame(summary(auc_anova)[[1]])
+
+auc_tukey <- TukeyHSD(auc_anova)
+tukey_results <- as.data.frame(auc_tukey$fungi)
+#---------------------------------------------------------
+ggplot(auc_data, aes(x = fungi, y = AUC, fill = fungi)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +
+  labs(
+    x = "",
+    y = ifelse(
+      normalise_auc,
+      "Normalised area under fluorescence curve",
+      "Area under fluorescence curve"
+    )
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+#---------------------------------------------------------
+ggsave("AUC_boxplot.png", width = 6, height = 6, dpi = 600)
+#---------------------------------------------------------
+#AUC- area under the curve value obtain per well
+write.csv(auc_data,"AUC_values_per_well.csv",row.names = FALSE)
+
+#ANOVA only tells you if there statistical differences overall within the treatments
+write.csv(anova_summary,"AUC_ANOVA_summary.csv",row.names = TRUE)
+
+#Tukey posthoc will tell you about statistical differences between one-on-one treatment comparisons
+write.csv(tukey_results,"AUC_Tukey_posthoc.csv",row.names = TRUE)
+
+
+```
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8. Plot using Time_hours (clean readable x-axis)
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              fill = "#e5989b", alpha = 0.35) +
+  geom_line(color = "#b23a48", linewidth = 0.8) +
+  facet_wrap(~ fungi, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
+  labs(y = "mCherry fluorescence") +
+  theme_classic() +
+  theme(
+      strip.text = element_text(size = 11, lineheight = 1.1),
+      strip.background = element_rect(fill = "white", color = "black"),
+      plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+      text = element_text(family = "Avenir Next Medium"),
+      panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA4_mCherry_48h_Ecoli_vs_Zymo.png", width = 9, height = 3, dpi = 600)
+
+```
+
+```{r}
+
+#---------------------------------------------------------
+# 8.1 Plot - Remove facet_wrap, all curves in one plot
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean,
+                       colour = fungi, fill = fungi, group = fungi)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              alpha = 0.20, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
+  labs(
+    y = "mCherry fluorescence",
+    colour = "Treatment",
+    fill = "Treatment"
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    legend.position = "left",
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+
+#---------------------------------------------------------
+# 9. Save high-resolution figure
+#---------------------------------------------------------
+ggsave("FA4_mCherry_48h_Ecoli_vs_Zymo.png", width = 6, height = 4, dpi = 600)
+
+
+
+```
+
+ESCHERICHIA COLI - DTOMATO
+
+SUBSETTING Escherichia + Zymo PER FIGURE DTOMATO
+
+FA4 - dTomato - subsetting some bacteria, fungi and setting time intervals
+
+```{r}
+
+#---------------------------------------------------------
+# 1. Load data
+#---------------------------------------------------------
+des <- read.csv("FA_Liz_plate_layout.csv", header = TRUE)
+data <- read.csv("FA4_dTomato.csv", header = TRUE)
+
+#---------------------------------------------------------
+# 2. Convert Time ("H:MM:SS") into numeric hours
+#---------------------------------------------------------
+data <- data %>%
+  mutate(
+    H = as.numeric(sub(":.*", "", Time)),
+    M = as.numeric(sub("^[0-9]+:([0-9]+):.*", "\\1", Time)),
+    S = as.numeric(sub(".*:([0-9]+)$", "\\1", Time)),
+    Time_hours = H + M/60 + S/3600
+  ) %>%
+  select(-H, -M, -S)   # clean-up
+
+#---------------------------------------------------------
+# 3. Optional: choose a time window (example: 0–50 h)
+#---------------------------------------------------------
+data_subset <- data %>%
+  filter(Time_hours <= 50)                           # adjust window as desired
+# For 24–48 hours: filter(Time_hours >= 24 & Time_hours <= 48)
+
+#---------------------------------------------------------
+# 4. Select bacteria and fungi of interest
+#---------------------------------------------------------
+selected_bacteria <- c(
+  "Escherichia_coli_dTomato"
+)
+
+selected_fungi <- c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP"
+)
+
+des_subset <- des %>% 
+  filter(bacteria %in% selected_bacteria) %>%
+  filter(fungi %in% selected_fungi)
+
+#---------------------------------------------------------
+# 5. Tidy data and join metadata
+#---------------------------------------------------------
+It <- data_subset %>%
+  gather(key = "Well", value = "dTom", colnames(data_subset)[!colnames(data_subset) %in% c("Time","Time_hours")]) %>%
+  left_join(des_subset[, c("well", "bacteria", "fungi")],
+            by = c("Well" = "well")) %>%
+  filter(!is.na(bacteria))  # remove wells not in selected bacteria
+
+#---------------------------------------------------------
+# 6. Calculate mean and SD per time point
+#---------------------------------------------------------
+Imean <- It %>%
+  group_by(Time_hours, bacteria, fungi) %>%
+  summarise(
+    mean = mean(dTom, na.rm = TRUE),
+    sd   = sd(dTom, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+# 7. Reorganise and rename bacterial and fungal strains
+#--------------------------------------------------------- 
+
+Imean$bacteria <- factor(
+  Imean$bacteria,
+  levels = c(
+  "Escherichia_coli_dTomato"
+  ),
+  labels = c(
+  "Escherichia coli - dTomato"
+  )
+)
+Imean$fungi <- factor(
+  Imean$fungi,
+  levels = c(
+  "3D7_mCherry", 
+  "3D7_mCherry_AvrStb6_KO",
+  "3D7_mCherry_AvrStb6_GFP"
+  ),
+  labels = c(
+  "E. coli-dTomato + 3D7-mCherry", 
+  "E. coli-dTomato + 3D7-mCherry ∆AvrStb6",
+  "E. coli-dTomato + 3D7-mCherry + AvrStb6.1E4"
+  )
+)
+
+#---------------------------------------------------------
+# 8. Statistical analysis - Area under the curve with DescTools
+#--------------------------------------------------------- 
+
+auc_data <- It %>%
+  group_by(Well, fungi) %>%
+  summarise(
+    AUC = AUC(
+      x = Time_hours,
+      y = dTom,
+      method = "trapezoid"
+    )
+  ) %>%
+  ungroup()
+
+#---------------------------------------------------------
+auc_anova <- aov(AUC ~ fungi, data = auc_data)
+anova_summary <- as.data.frame(summary(auc_anova)[[1]])
+
+auc_tukey <- TukeyHSD(auc_anova)
+tukey_results <- as.data.frame(auc_tukey$fungi)
+#---------------------------------------------------------
+ggplot(auc_data, aes(x = fungi, y = AUC, fill = fungi)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +
+  labs(
+    x = "",
+    y = ifelse(
+      normalise_auc,
+      "Normalised area under fluorescence curve",
+      "Area under fluorescence curve"
+    )
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+#---------------------------------------------------------
+ggsave("AUC_boxplot.png", width = 6, height = 6, dpi = 600)
+#---------------------------------------------------------
+#AUC- area under the curve value obtain per well
+write.csv(auc_data,"AUC_values_per_well.csv",row.names = FALSE)
+
+#ANOVA only tells you if there statistical differences overall within the treatments
+write.csv(anova_summary,"AUC_ANOVA_summary.csv",row.names = TRUE)
+
+#Tukey posthoc will tell you about statistical differences between one-on-one treatment comparisons
+write.csv(tukey_results,"AUC_Tukey_posthoc.csv",row.names = TRUE)
+
+
+
+
+```
+
+
+```{r}
+#---------------------------------------------------------
+# 8 Plot using Time_hours (clean readable x-axis) - for individual lines 
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              fill = "#f4a261", alpha = 0.35) +
+  geom_line(color = "#d94801", linewidth = 0.8) +
+  facet_wrap(~ fungi, labeller = label_wrap_gen(width = 22)) +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 7000)) +
+  labs(y = "dTomato fluorescence") +
+  theme_classic() +
+  theme(
+      strip.text = element_text(size = 11, lineheight = 1.1),
+      strip.background = element_rect(fill = "white", color = "black"),
+      plot.margin = margin(t = 10, r = 5, b = 5, l = 5),
+      text = element_text(family = "Avenir Next Medium"),
+      panel.border = element_rect(color = "black", fill = NA)
+  )
+
+
+#---------------------------------------------------------
+# 9 Save high-resolution figure - by FUNGI
+#---------------------------------------------------------
+ggsave("FA4_dTomato_48h_Ecoli_vs_Zymo.png", width = 9, height = 3, dpi = 600)
+
+```
+
+
+
+```{r}
+
+#---------------------------------------------------------
+# 8.1 Plot - Remove facet_wrap, all curves in one plot
+#---------------------------------------------------------
+
+ggplot(Imean, aes(x = Time_hours, y = mean,
+                       colour = fungi, fill = fungi, group = fungi)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd),
+              alpha = 0.20, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_continuous(
+    name = "Time (hours)",
+    breaks = seq(0, max(Imean$Time_hours), by = 12)
+  ) +
+  coord_cartesian(ylim = c(0, 7000)) +
+  labs(
+    y = "dTomato fluorescence",
+    colour = "Treatment",
+    fill = "Treatment"
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    legend.position = "none",
+    panel.border = element_rect(color = "black", fill = NA)
+  )
+
+#---------------------------------------------------------
+# 9 Save high-resolution figure - by FUNGI
+#---------------------------------------------------------
+ggsave("FA4_dTomato_48h_Ecoli_vs_Zymo_all.png", width = 4, height = 4, dpi = 600)
+
+
+```
+
+STATISTICAL ANALYSIS
+
+
+```{r}
+
+#---------------------------------------------------------
+# Statistical analysis: Area under the curve with DescTools
+#---------------------------------------------------------
+
+library(DescTools)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+
+#---------------------------------------------------------
+# 2. Calculate AUC per replicate well
+#---------------------------------------------------------
+
+auc_data <- It %>% 
+  group_by(Well, fungi) %>% 
+  summarise( 
+    AUC = AUC( 
+      x = Time_hours, 
+      y = mChe, 
+      method = "trapezoid" 
+      ) ) %>% ungroup()
+
+head(auc_data) #Optional
+
+#---------------------------------------------------------
+# 4. ANOVA
+#---------------------------------------------------------
+
+auc_anova <- aov(AUC ~ fungi, data = auc_data)
+
+anova_summary <- as.data.frame(summary(auc_anova)[[1]])
+
+anova_summary #Optional: to have a glance at the ANOVA
+
+#---------------------------------------------------------
+# 5. Tukey post hoc test
+#---------------------------------------------------------
+
+auc_tukey <- TukeyHSD(auc_anova)
+
+tukey_results <- as.data.frame(auc_tukey$fungi)
+
+tukey_results #Optional: to have a glance at the tukey Posthoc results
+
+#---------------------------------------------------------
+# 6. Plot AUC values
+#---------------------------------------------------------
+
+ggplot(auc_data, aes(x = fungi, y = AUC, fill = fungi)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +
+  labs(
+    x = "",
+    y = ifelse(
+      normalise_auc,
+      "Normalised area under fluorescence curve",
+      "Area under fluorescence curve"
+    )
+  ) +
+  ggpubr::theme_pubr() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+
+ggsave("AUC_boxplot.png", width = 6, height = 6, dpi = 600)
+
+#---------------------------------------------------------
+# 7. Optional: export of statistical results
+#---------------------------------------------------------
+
+#AUC- area under the curve value obtain per well
+write.csv(auc_data,"AUC_values_per_well.csv",row.names = FALSE)
+
+#ANOVA only tells you if there statistical differences overall within the treatments
+write.csv(anova_summary,"AUC_ANOVA_summary.csv",row.names = TRUE)
+
+#Tukey posthoc will tell you about statistical differences between one-on-one treatment comparisons
+write.csv(tukey_results,"AUC_Tukey_posthoc.csv",row.names = TRUE)
+
+
+
+```
+
+
+

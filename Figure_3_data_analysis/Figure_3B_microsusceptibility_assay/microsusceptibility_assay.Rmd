@@ -1,0 +1,81 @@
+---
+title: "Microsusceptibility_assay"
+output: html_document
+---
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Read tidy dataset
+df <- read.csv("microsusceptibility_data.csv")
+
+# Optional: Concentrations to keep, ordered low to high
+concentration_levels <- c(
+  0.046875, 0.09375, 0.1875, 0.375, 0.75,
+  1.5, 3, 6, 12, 24
+)
+
+# Isolate order
+isolate_levels <- c(
+  "Pseudomonas sp.",
+  "Rahnella sp.",
+  "Enterobacter sp.",
+  "Flavobacterium sp.",
+  "Curtobacterium sp.",
+  "Pantoea sp."
+)
+
+# Facet labels
+bacteria_labs <- c(
+  "Pseudomonas sp."    = "italic('Pseudomonas')~'sp.'",
+  "Rahnella sp."       = "italic('Rahnella')~'sp.'",
+  "Enterobacter sp."   = "italic('Enterobacter')~'sp.'",
+  "Flavobacterium sp." = "italic('Flavobacterium')~'sp.'",
+  "Curtobacterium sp." = "italic('Curtobacterium')~'sp.'",
+  "Pantoea sp."        = "italic('Pantoea')~'sp.'"
+)
+
+# Clean and filter data
+df_plot <- df %>%
+  filter(
+    isolate != "ntc",
+    concentration %in% concentration_levels
+  ) %>%
+  mutate(
+    isolate = factor(isolate, levels = isolate_levels),
+    concentration = factor(concentration, levels = concentration_levels)
+  )
+
+# Plot
+ggplot(df_plot, aes(x = concentration, y = od600, fill = treatment)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(
+    aes(color = treatment),
+    width = 0.2,
+    size = 1.5,
+    alpha = 0.6
+  ) +
+  facet_wrap(
+    ~ isolate,
+    scales = "free_y",
+    labeller = as_labeller(bacteria_labs, label_parsed)
+  ) +
+  theme_bw(base_size = 12) +
+  labs(
+    x = "Protein concentration (µM)",
+    y = "OD600",
+    fill = "Treatment",
+    color = "Treatment"
+  ) +
+  theme(
+    text = element_text(family = "Avenir Next Medium"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+ggsave("AvrStb6_microsusceptibility_assay.png", width = 8, height = 4, dpi = 600)
+
+```
+
