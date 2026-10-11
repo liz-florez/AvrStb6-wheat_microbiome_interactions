@@ -34,4 +34,4 @@ liz.florez.p@gmail.com
 If you use this repository, please cite:
 Florez L. et al. (2026). An effector protein that protects a fungal pathogen from the plant microbiota during host colonisation. bioRxiv.
 ## License
-
+CC-BY-4.0
